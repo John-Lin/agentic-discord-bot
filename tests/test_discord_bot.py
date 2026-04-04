@@ -248,3 +248,59 @@ class TestTypingIndicator:
             await bot.on_message(msg)
 
         msg.channel.typing.assert_called_once()
+
+    @pytest.mark.anyio
+    async def test_send_happens_while_typing_is_active(self, bot):
+        """channel.send must be called before the typing context manager exits."""
+        msg = _make_dm_message(user_id=1, channel_id=10, text="hi")
+
+        call_log: list[str] = []
+
+        async def tracking_aexit(*args):
+            call_log.append("typing_exit")
+            return False
+
+        async def tracking_send(text):
+            call_log.append("send")
+
+        msg.channel.typing.return_value.__aexit__ = tracking_aexit
+        msg.channel.send = tracking_send
+
+        with patch("bot.discord_bot.get_dm_policy", return_value="allowlist"), patch(
+            "bot.discord_bot.is_allowed", return_value=True
+        ):
+            await bot.on_message(msg)
+
+        assert call_log.index("send") < call_log.index("typing_exit")
+
+
+class TestGuildConfigFallback:
+    @pytest.mark.anyio
+    async def test_guild_config_missing_channels_key_does_not_crash(self, bot):
+        """A guild config without 'channels' key should not raise KeyError."""
+        msg = _make_guild_message(
+            user_id=1, channel_id=10, guild_id=500, text="<@999> hello", mentioned=True, bot_user_id=999
+        )
+        bot._client = MagicMock()
+        bot._client.user = MagicMock()
+        bot._client.user.id = 999
+
+        with patch("bot.discord_bot.get_guild_config", return_value={"allowFrom": []}):
+            await bot.on_message(msg)
+
+        bot.agent.run.assert_called_once()
+
+    @pytest.mark.anyio
+    async def test_guild_config_missing_allow_from_key_does_not_crash(self, bot):
+        """A guild config without 'allowFrom' key should not raise KeyError."""
+        msg = _make_guild_message(
+            user_id=1, channel_id=10, guild_id=500, text="<@999> hello", mentioned=True, bot_user_id=999
+        )
+        bot._client = MagicMock()
+        bot._client.user = MagicMock()
+        bot._client.user.id = 999
+
+        with patch("bot.discord_bot.get_guild_config", return_value={"channels": []}):
+            await bot.on_message(msg)
+
+        bot.agent.run.assert_called_once()

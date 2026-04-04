@@ -23,7 +23,7 @@ def load_auth() -> dict[str, Any]:
     with open(path) as f:
         data = json.load(f)
     for key, default in _default_auth().items():
-        data.setdefault(key, type(default)() if not isinstance(default, str) else default)
+        data.setdefault(key, default)
     return data
 
 

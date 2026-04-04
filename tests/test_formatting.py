@@ -41,6 +41,12 @@ class TestToDiscordMarkdown:
         result = to_discord_markdown(text)
         assert "# not a heading" in result
 
+    def test_heading_between_two_code_blocks_not_converted(self):
+        text = "```python\nprint('hi')\n```\n\n# This is a real heading\n\n```bash\n# not a heading\n```"
+        result = to_discord_markdown(text)
+        assert "**This is a real heading**" in result
+        assert "# not a heading" in result
+
     def test_multiple_headings(self):
         text = "# Title\n\nsome text\n\n## Section"
         result = to_discord_markdown(text)

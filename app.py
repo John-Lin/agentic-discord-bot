@@ -34,7 +34,7 @@ async def start_bot() -> None:
     except (KeyboardInterrupt, asyncio.CancelledError):
         logging.info("Shutting down...")
     except Exception as e:
-        logging.error(f"Error: {e}")
+        logging.error(f"Error: {e}", exc_info=True)
     finally:
         await discord_bot.close()
         await openai_agent.cleanup()

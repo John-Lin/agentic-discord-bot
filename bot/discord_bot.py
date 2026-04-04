@@ -65,11 +65,11 @@ class DiscordMCPBot:
             return  # Guild not configured
 
         # Channel filter: if channels list is set, only respond in listed channels.
-        allowed_channels = guild_config["channels"]
+        allowed_channels = guild_config.get("channels", [])
         if allowed_channels and str(message.channel.id) not in allowed_channels:
             return
 
-        allow_from = guild_config["allowFrom"]
+        allow_from = guild_config.get("allowFrom", [])
         if str(message.author.id) in allow_from:
             # User is explicitly whitelisted — no mention needed.
             await self._respond(message)
@@ -91,6 +91,6 @@ class DiscordMCPBot:
                 await message.channel.send("I'm sorry, I encountered an error processing your request.")
                 return
 
-        formatted = to_discord_markdown(response)
-        for chunk in split_message(formatted):
-            await message.channel.send(chunk)
+            formatted = to_discord_markdown(response)
+            for chunk in split_message(formatted):
+                await message.channel.send(chunk)
