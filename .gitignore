@@ -11,4 +11,4 @@ build/
 .pytest_cache/
 logs/
 access.json
-.access.json.lock
+access.json.lock
