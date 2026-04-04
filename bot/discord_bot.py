@@ -12,7 +12,6 @@ from .auth import get_guild_config
 from .auth import is_allowed
 from .formatting import split_message
 from .formatting import to_discord_markdown
-from .ratelimit import RateLimiter
 
 
 class DiscordMCPBot:
@@ -22,7 +21,6 @@ class DiscordMCPBot:
 
         self._token = bot_token
         self.agent = openai_agent
-        self.rate_limiter = RateLimiter()
 
         intents = discord.Intents.default()
         intents.message_content = True
@@ -83,10 +81,6 @@ class DiscordMCPBot:
             await self._respond(message)
 
     async def _respond(self, message: discord.Message) -> None:
-        if not self.rate_limiter.is_allowed(message.author.id):
-            await message.channel.send("Rate limit exceeded. Please try again later.")
-            return
-
         key: ConversationKey = (message.channel.id, message.author.id)
 
         async with message.channel.typing():

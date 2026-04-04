@@ -248,20 +248,3 @@ class TestTypingIndicator:
             await bot.on_message(msg)
 
         msg.channel.typing.assert_called_once()
-
-
-class TestRateLimiting:
-    @pytest.mark.anyio
-    async def test_rate_limited_user_gets_error_message(self, bot):
-        msg = _make_dm_message(user_id=1, channel_id=10, text="hi")
-        bot.rate_limiter = MagicMock()
-        bot.rate_limiter.is_allowed.return_value = False
-
-        with patch("bot.discord_bot.get_dm_policy", return_value="allowlist"), patch(
-            "bot.discord_bot.is_allowed", return_value=True
-        ):
-            await bot.on_message(msg)
-
-        bot.agent.run.assert_not_called()
-        msg.channel.send.assert_called_once()
-        assert "rate limit" in msg.channel.send.call_args[0][0].lower()
