@@ -1,0 +1,40 @@
+import json
+import logging
+import os
+from typing import Any
+
+from dotenv import find_dotenv
+from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
+
+
+class Configuration:
+    """Manages configuration and environment variables for the Discord bot."""
+
+    def __init__(self) -> None:
+        self.load_env()
+        self.discord_bot_token = os.getenv("DISCORD_BOT_TOKEN")
+        self.openai_api_key = os.getenv("OPENAI_API_KEY")
+
+    @staticmethod
+    def load_env() -> None:
+        load_dotenv(find_dotenv())
+
+    _DEFAULT_CONFIG: dict[str, Any] = {"mcpServers": {}}
+
+    @staticmethod
+    def load_config(file_path: str) -> dict[str, Any]:
+        """Load server configuration from JSON file.
+
+        Returns a default empty config when the file does not exist.
+
+        Raises:
+            JSONDecodeError: If configuration file is invalid JSON.
+        """
+        try:
+            with open(file_path) as f:
+                return json.load(f)
+        except FileNotFoundError:
+            logger.warning("Config file %s not found, using default empty config", file_path)
+            return dict(Configuration._DEFAULT_CONFIG)
