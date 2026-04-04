@@ -9,6 +9,7 @@ import sys
 from bot.agent import OpenAIAgent
 from bot.auth import add_guild
 from bot.auth import allow_user
+from bot.auth import confirm_pairing
 from bot.auth import get_dm_policy
 from bot.auth import remove_guild
 from bot.auth import remove_user
@@ -38,6 +39,14 @@ async def start_bot() -> None:
     finally:
         await discord_bot.close()
         await openai_agent.cleanup()
+
+
+def cmd_pair(args: argparse.Namespace) -> None:
+    user_id = confirm_pairing(args.code)
+    if user_id is None:
+        print(f"Invalid or expired pairing code: {args.code}")
+        sys.exit(1)
+    print(f"Paired successfully! User ID {user_id} has been added.")
 
 
 def cmd_allow(args: argparse.Namespace) -> None:
@@ -91,7 +100,9 @@ def _dispatch_access(
     access_parser: argparse.ArgumentParser,
     guild_parser: argparse.ArgumentParser,
 ) -> None:
-    if args.access_command == "allow":
+    if args.access_command == "pair":
+        cmd_pair(args)
+    elif args.access_command == "allow":
         cmd_allow(args)
     elif args.access_command == "remove":
         cmd_remove(args)
@@ -118,6 +129,10 @@ def run() -> None:
     access_parser = subparsers.add_parser("access", help="Manage access control")
     access_sub = access_parser.add_subparsers(dest="access_command")
 
+    # access pair
+    pair_parser = access_sub.add_parser("pair", help="Confirm a pairing code from DM")
+    pair_parser.add_argument("code", type=str, help="6-character pairing code")
+
     # access allow / remove
     allow_parser = access_sub.add_parser("allow", help="Allow a user in DMs")
     allow_parser.add_argument("user_id", type=int, help="Discord user ID")
@@ -130,7 +145,7 @@ def run() -> None:
     policy_parser.add_argument(
         "policy",
         nargs="?",
-        choices=["allowlist", "disabled"],
+        choices=["pairing", "allowlist", "disabled"],
         default=None,
         help="Set DM policy (omit to show current)",
     )

@@ -7,6 +7,7 @@ import discord
 
 from .agent import ConversationKey
 from .agent import OpenAIAgent
+from .auth import create_pairing_code
 from .auth import get_dm_policy
 from .auth import get_guild_config
 from .auth import is_allowed
@@ -54,10 +55,20 @@ class DiscordMCPBot:
         if policy == "disabled":
             return
 
-        if not await asyncio.to_thread(is_allowed, message.author.id):
-            return  # Silent drop for unknown users
+        if await asyncio.to_thread(is_allowed, message.author.id):
+            await self._respond(message)
+            return
 
-        await self._respond(message)
+        # User not in allowFrom
+        if policy == "allowlist":
+            return  # Silent drop
+
+        # policy == "pairing"
+        code = await asyncio.to_thread(create_pairing_code, message.author.id, message.author.name)
+        await message.channel.send(
+            f"Your pairing code: {code}\n\n"
+            f"Run this in your terminal to complete pairing:\n  uv run bot access pair {code}"
+        )
 
     async def _handle_guild(self, message: discord.Message) -> None:
         guild_config = await asyncio.to_thread(get_guild_config, message.guild.id)

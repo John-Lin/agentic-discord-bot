@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from bot.auth import allow_user
+from bot.auth import create_pairing_code
 from bot.auth import get_dm_policy
 from bot.auth import is_allowed
 from bot.auth import load_auth
@@ -17,6 +18,7 @@ from bot.auth import save_auth
 @pytest.fixture(autouse=True)
 def auth_file(tmp_path, monkeypatch):
     monkeypatch.setattr("bot.auth.AUTH_FILE", tmp_path / "access.json")
+    monkeypatch.setattr("bot.auth.PENDING_FILE", tmp_path / ".access.pending.json")
     return tmp_path
 
 
@@ -56,11 +58,29 @@ class TestAccessRemove:
         assert code != 0
 
 
+class TestAccessPair:
+    def test_pair_valid_code(self):
+        code = create_pairing_code(123, "john")
+        exit_code = _run(["access", "pair", code])
+        assert exit_code == 0
+        assert is_allowed(123) is True
+
+    def test_pair_invalid_code_exits_nonzero(self):
+        code = _run(["access", "pair", "BADCODE"])
+        assert code != 0
+
+    def test_pair_prints_success(self, capsys):
+        code = create_pairing_code(123, "john")
+        _run(["access", "pair", code])
+        out = capsys.readouterr().out
+        assert "paired" in out.lower() or "success" in out.lower()
+
+
 class TestAccessPolicy:
     def test_show_policy(self, capsys):
         _run(["access", "policy"])
         out = capsys.readouterr().out
-        assert "allowlist" in out
+        assert "pairing" in out
 
     def test_set_policy_disabled(self):
         _run(["access", "policy", "disabled"])
@@ -70,6 +90,11 @@ class TestAccessPolicy:
         _run(["access", "policy", "disabled"])
         _run(["access", "policy", "allowlist"])
         assert get_dm_policy() == "allowlist"
+
+    def test_set_policy_pairing(self):
+        _run(["access", "policy", "disabled"])
+        _run(["access", "policy", "pairing"])
+        assert get_dm_policy() == "pairing"
 
     def test_set_invalid_policy_exits_nonzero(self):
         code = _run(["access", "policy", "bogus"])
