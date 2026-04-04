@@ -156,7 +156,7 @@ class TestInstructions:
 
 class TestHistoryTruncation:
     def test_default_max_turns(self):
-        assert MAX_TURNS == 25
+        assert MAX_TURNS == 10
 
     def test_truncate_keeps_recent_turns(self):
         agent = OpenAIAgent(name="test")
@@ -176,7 +176,7 @@ class TestHistoryTruncation:
 
         user_msgs = [m for m in msgs if m["role"] == "user"]
         assert len(user_msgs) == MAX_TURNS
-        assert user_msgs[0]["content"] == "user-5"
+        assert user_msgs[0]["content"] == "user-20"
         assert user_msgs[-1]["content"] == "user-29"
 
     def test_no_truncation_when_under_limit(self):

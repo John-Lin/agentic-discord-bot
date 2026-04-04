@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import time
+
 import pytest
 
 import bot.auth as auth_mod
 from bot.auth import add_guild
 from bot.auth import allow_user
+from bot.auth import confirm_pairing
+from bot.auth import create_pairing_code
 from bot.auth import get_dm_policy
 from bot.auth import get_guild_config
 from bot.auth import is_allowed
@@ -21,6 +25,7 @@ from bot.auth import set_dm_policy
 def auth_file(tmp_path, monkeypatch):
     """Use temporary files for every test."""
     monkeypatch.setattr("bot.auth.AUTH_FILE", tmp_path / "access.json")
+    monkeypatch.setattr("bot.auth.PENDING_FILE", tmp_path / ".access.pending.json")
     return tmp_path
 
 
@@ -28,25 +33,30 @@ class TestLoadSave:
     def test_load_returns_default_when_file_missing(self):
         data = load_auth()
         assert data == {
-            "dmPolicy": "allowlist",
+            "dmPolicy": "pairing",
             "allowFrom": [],
             "guilds": {},
         }
 
     def test_save_and_load_roundtrip(self):
-        data = {"dmPolicy": "allowlist", "allowFrom": ["123"], "guilds": {}}
+        data = {"dmPolicy": "pairing", "allowFrom": ["123"], "guilds": {}}
         save_auth(data)
         assert load_auth() == data
 
     def test_load_backfills_missing_dm_policy(self):
         save_auth({"allowFrom": ["123"], "guilds": {}})
         data = load_auth()
-        assert data["dmPolicy"] == "allowlist"
+        assert data["dmPolicy"] == "pairing"
 
     def test_load_backfills_missing_guilds(self):
-        save_auth({"dmPolicy": "allowlist", "allowFrom": []})
+        save_auth({"dmPolicy": "pairing", "allowFrom": []})
         data = load_auth()
         assert data["guilds"] == {}
+
+    def test_load_strips_pending_from_old_files(self):
+        save_auth({"dmPolicy": "pairing", "allowFrom": [], "guilds": {}, "pending": {"ABC": {}}})
+        data = load_auth()
+        assert "pending" not in data
 
 
 class TestIsAllowed:
@@ -54,11 +64,11 @@ class TestIsAllowed:
         assert is_allowed(999) is False
 
     def test_allowed_user(self):
-        save_auth({"dmPolicy": "allowlist", "allowFrom": ["123"], "guilds": {}})
+        save_auth({"dmPolicy": "pairing", "allowFrom": ["123"], "guilds": {}})
         assert is_allowed(123) is True
 
     def test_allowed_user_compared_as_string(self):
-        save_auth({"dmPolicy": "allowlist", "allowFrom": ["123"], "guilds": {}})
+        save_auth({"dmPolicy": "pairing", "allowFrom": ["123"], "guilds": {}})
         assert is_allowed(123) is True
         assert is_allowed(456) is False
 
@@ -79,7 +89,7 @@ class TestAllowRemoveUser:
         assert allow_user(123) is False
 
     def test_remove_existing_user(self):
-        save_auth({"dmPolicy": "allowlist", "allowFrom": ["123", "456"], "guilds": {}})
+        save_auth({"dmPolicy": "pairing", "allowFrom": ["123", "456"], "guilds": {}})
         assert remove_user(123) is True
         assert is_allowed(123) is False
         assert is_allowed(456) is True
@@ -88,14 +98,14 @@ class TestAllowRemoveUser:
         assert remove_user(999) is False
 
     def test_remove_user_idempotent(self):
-        save_auth({"dmPolicy": "allowlist", "allowFrom": ["123"], "guilds": {}})
+        save_auth({"dmPolicy": "pairing", "allowFrom": ["123"], "guilds": {}})
         assert remove_user(123) is True
         assert remove_user(123) is False
 
 
 class TestDmPolicy:
-    def test_default_policy_is_allowlist(self):
-        assert get_dm_policy() == "allowlist"
+    def test_default_policy_is_pairing(self):
+        assert get_dm_policy() == "pairing"
 
     def test_set_policy_disabled(self):
         set_dm_policy("disabled")
@@ -106,14 +116,111 @@ class TestDmPolicy:
         set_dm_policy("allowlist")
         assert get_dm_policy() == "allowlist"
 
+    def test_set_policy_pairing(self):
+        set_dm_policy("disabled")
+        set_dm_policy("pairing")
+        assert get_dm_policy() == "pairing"
+
     def test_set_invalid_policy_raises(self):
         with pytest.raises(ValueError, match="invalid"):
             set_dm_policy("bogus")
 
     def test_policy_persisted(self):
-        set_dm_policy("disabled")
+        set_dm_policy("allowlist")
         data = load_auth()
-        assert data["dmPolicy"] == "disabled"
+        assert data["dmPolicy"] == "allowlist"
+
+
+class TestPairing:
+    def test_create_pairing_code_returns_6_chars(self):
+        code = create_pairing_code(123, "john")
+        assert len(code) == 6
+        assert code.isalnum()
+
+    def test_create_pairing_code_stores_in_pending_file(self):
+        code = create_pairing_code(123, "john")
+        pending = auth_mod._load_pending()
+        assert code in pending
+        assert pending[code]["user_id"] == 123
+        assert pending[code]["username"] == "john"
+
+    def test_pending_not_in_access_json(self):
+        create_pairing_code(123, "john")
+        data = load_auth()
+        assert "pending" not in data
+
+    def test_confirm_pairing_adds_to_allow_from(self):
+        code = create_pairing_code(123, "john")
+        user_id = confirm_pairing(code)
+        assert user_id == 123
+        assert is_allowed(123) is True
+
+    def test_confirm_pairing_stores_as_string(self):
+        code = create_pairing_code(123, "john")
+        confirm_pairing(code)
+        data = load_auth()
+        assert "123" in data["allowFrom"]
+
+    def test_confirm_pairing_removes_pending(self):
+        code = create_pairing_code(123, "john")
+        confirm_pairing(code)
+        pending = auth_mod._load_pending()
+        assert code not in pending
+
+    def test_confirm_pairing_invalid_code_returns_none(self):
+        assert confirm_pairing("BADCODE") is None
+
+    def test_confirm_pairing_is_one_time(self):
+        code = create_pairing_code(123, "john")
+        confirm_pairing(code)
+        assert confirm_pairing(code) is None
+
+    def test_multiple_users_can_pair(self):
+        code1 = create_pairing_code(111, "alice")
+        code2 = create_pairing_code(222, "bob")
+        confirm_pairing(code1)
+        confirm_pairing(code2)
+        assert is_allowed(111) is True
+        assert is_allowed(222) is True
+
+    def test_duplicate_user_not_added_twice(self):
+        code1 = create_pairing_code(123, "john")
+        confirm_pairing(code1)
+        code2 = create_pairing_code(123, "john")
+        confirm_pairing(code2)
+        data = load_auth()
+        assert data["allowFrom"].count("123") == 1
+
+
+class TestPairingExpiration:
+    def test_expired_code_returns_none(self):
+        code = create_pairing_code(123, "john")
+        pending = auth_mod._load_pending()
+        pending[code]["created_at"] = time.time() - 660
+        auth_mod._save_pending(pending)
+        assert confirm_pairing(code) is None
+
+    def test_fresh_code_works(self):
+        code = create_pairing_code(123, "john")
+        user_id = confirm_pairing(code)
+        assert user_id == 123
+
+    def test_expired_code_is_cleaned_up(self):
+        code = create_pairing_code(123, "john")
+        pending = auth_mod._load_pending()
+        pending[code]["created_at"] = time.time() - 660
+        auth_mod._save_pending(pending)
+        confirm_pairing(code)
+        pending = auth_mod._load_pending()
+        assert code not in pending
+
+    def test_create_pairing_code_stores_created_at(self):
+        before = time.time()
+        code = create_pairing_code(123, "john")
+        after = time.time()
+        pending = auth_mod._load_pending()
+        assert "created_at" in pending[code]
+        assert before <= pending[code]["created_at"] <= after
 
 
 class TestGuildAccess:
@@ -167,7 +274,7 @@ class TestGuildAccess:
 
 class TestLockedAuth:
     def test_locked_auth_loads_data(self):
-        save_auth({"dmPolicy": "allowlist", "allowFrom": ["123"], "guilds": {}})
+        save_auth({"dmPolicy": "pairing", "allowFrom": ["123"], "guilds": {}})
         with locked_auth() as data:
             assert data["allowFrom"] == ["123"]
 
@@ -177,7 +284,7 @@ class TestLockedAuth:
         assert load_auth()["allowFrom"] == ["456"]
 
     def test_locked_auth_does_not_save_on_exception(self):
-        save_auth({"dmPolicy": "allowlist", "allowFrom": ["123"], "guilds": {}})
+        save_auth({"dmPolicy": "pairing", "allowFrom": ["123"], "guilds": {}})
         with pytest.raises(RuntimeError), locked_auth() as data:
             data["allowFrom"].append("999")
             raise RuntimeError("boom")

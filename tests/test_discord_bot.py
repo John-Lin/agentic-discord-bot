@@ -128,6 +128,46 @@ class TestDmHandling:
         assert "hello from agent" in msg.channel.send.call_args[0][0]
 
 
+class TestDmPairing:
+    @pytest.mark.anyio
+    async def test_dm_pairing_sends_code_to_unknown_user(self, bot):
+        msg = _make_dm_message(user_id=42, channel_id=10, text="hello")
+
+        with patch("bot.discord_bot.get_dm_policy", return_value="pairing"), patch(
+            "bot.discord_bot.is_allowed", return_value=False
+        ), patch("bot.discord_bot.create_pairing_code", return_value="ABC123"):
+            await bot.on_message(msg)
+
+        bot.agent.run.assert_not_called()
+        msg.channel.send.assert_called_once()
+        sent_text = msg.channel.send.call_args[0][0]
+        assert "ABC123" in sent_text
+        assert "pair" in sent_text.lower()
+
+    @pytest.mark.anyio
+    async def test_dm_pairing_allowed_user_bypasses_pairing(self, bot):
+        msg = _make_dm_message(user_id=1, channel_id=10, text="hello")
+
+        with patch("bot.discord_bot.get_dm_policy", return_value="pairing"), patch(
+            "bot.discord_bot.is_allowed", return_value=True
+        ):
+            await bot.on_message(msg)
+
+        bot.agent.run.assert_called_once()
+
+    @pytest.mark.anyio
+    async def test_dm_pairing_passes_user_id_and_name(self, bot):
+        msg = _make_dm_message(user_id=42, channel_id=10, text="hello")
+        msg.author.name = "testuser"
+
+        with patch("bot.discord_bot.get_dm_policy", return_value="pairing"), patch(
+            "bot.discord_bot.is_allowed", return_value=False
+        ), patch("bot.discord_bot.create_pairing_code", return_value="XYZ789") as mock_create:
+            await bot.on_message(msg)
+
+        mock_create.assert_called_once_with(42, "testuser")
+
+
 class TestGuildHandling:
     @pytest.mark.anyio
     async def test_guild_message_without_mention_ignored(self, bot):

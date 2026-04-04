@@ -22,7 +22,7 @@ DEFAULT_INSTRUCTIONS = (
     "Keep responses concise and well-structured."
 )
 
-MAX_TURNS = 25
+MAX_TURNS = 10
 MCP_SESSION_TIMEOUT_SECONDS = 30.0
 
 # Conversation key: (channel_id, user_id) — each user has an independent
@@ -37,7 +37,7 @@ def _get_model() -> OpenAIResponsesModel | OpenAIChatCompletionsModel:
       - "responses" (default): OpenAI Responses API — recommended by the SDK
       - "chat_completions": Chat Completions API — use for Azure OpenAI or compatible providers
     """
-    model_name = os.getenv("OPENAI_MODEL", "gpt-4.1")
+    model_name = os.getenv("OPENAI_MODEL", "gpt-5.4")
     api_type = os.getenv("OPENAI_API_TYPE", "responses")
 
     client: AsyncOpenAI
