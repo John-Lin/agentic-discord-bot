@@ -11,7 +11,7 @@ See also: [agentic-slackbot](https://github.com/John-Lin/agentic-slackbot) and [
 - Per-(channel, user) conversation history — each user maintains an independent context per channel/thread
 - Configurable guild access with per-channel and per-user filters
 - Connects to any MCP server via `servers_config.json`
-- Supports OpenAI and Azure OpenAI endpoints
+- Supports OpenAI and OpenAI-compatible endpoints (including Azure OpenAI v1 API)
 
 ## Install Dependencies
 
@@ -41,14 +41,13 @@ OPENAI_API_KEY=""
 OPENAI_MODEL="gpt-4.1"
 ```
 
-If you are using Azure OpenAI, set these instead:
+If you are using Azure OpenAI (v1 API):
 
 ```
 DISCORD_BOT_TOKEN=""
-AZURE_OPENAI_API_KEY=""
-AZURE_OPENAI_ENDPOINT="https://<myopenai>.azure.com/"
+OPENAI_API_KEY=""
+OPENAI_BASE_URL="https://<resource-name>.openai.azure.com/openai/v1/"
 OPENAI_MODEL="gpt-4.1"
-OPENAI_API_VERSION="2025-04-01-preview"
 ```
 
 ## MCP Server Configuration (Optional)
