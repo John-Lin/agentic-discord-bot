@@ -72,7 +72,7 @@ For HTTP-based MCP servers (Streamable HTTP):
 {
   "mcpServers": {
     "my-server": {
-      "httpUrl": "https://mcp.example.com/mcp",
+      "url": "https://mcp.example.com/mcp",
       "headers": {
         "Accept": "application/json, text/event-stream"
       }
