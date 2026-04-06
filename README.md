@@ -40,6 +40,9 @@ Create a `.env` file in the root directory:
 DISCORD_BOT_TOKEN=""
 OPENAI_API_KEY=""
 OPENAI_MODEL="gpt-4.1"
+
+# Shell skills (disabled by default)
+# SHELL_SKILLS_ENABLED=1
 ```
 
 If you are using Azure OpenAI (v1 API):
