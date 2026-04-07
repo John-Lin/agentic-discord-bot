@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from bot.formatting import DISCORD_MAX_LENGTH
 from bot.formatting import split_message
 from bot.formatting import to_discord_markdown
