@@ -127,7 +127,8 @@ All access is managed via `access.json` (auto-created, gitignored).
 
 | Policy | Behaviour |
 |---|---|
-| `allowlist` (default) | Only users in the allowlist can DM the bot |
+| `pairing` (default) | Unknown users receive a 6-character pairing code via DM |
+| `allowlist` | Only users in the allowlist can DM the bot |
 | `disabled` | All DMs are silently dropped |
 
 ```bash
@@ -135,7 +136,13 @@ All access is managed via `access.json` (auto-created, gitignored).
 uv run bot access policy
 
 # Set policy
-uv run bot access policy <allowlist|disabled>
+uv run bot access policy <pairing|allowlist|disabled>
+```
+
+When `dmPolicy` is `pairing`, confirm the code in your terminal:
+
+```bash
+uv run bot access pair <CODE>
 ```
 
 ### Users
