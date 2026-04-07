@@ -11,6 +11,7 @@ See also: [agentic-slackbot](https://github.com/John-Lin/agentic-slackbot) and [
 - Per-(channel, user) conversation history — each user maintains an independent context per channel/thread
 - Configurable guild access with per-channel and per-user filters
 - Connects to any MCP server via `servers_config.json`
+- Local shell skills via `ShellTool` (opt-in via `SHELL_SKILLS_ENABLED`)
 - Supports OpenAI and OpenAI-compatible endpoints (including Azure OpenAI v1 API)
 
 ## Install Dependencies
@@ -39,6 +40,9 @@ Create a `.env` file in the root directory:
 DISCORD_BOT_TOKEN=""
 OPENAI_API_KEY=""
 OPENAI_MODEL="gpt-4.1"
+
+# Shell skills (disabled by default)
+# SHELL_SKILLS_ENABLED=1
 ```
 
 If you are using Azure OpenAI (v1 API):
@@ -50,13 +54,24 @@ OPENAI_BASE_URL="https://<resource-name>.openai.azure.com/openai/v1/"
 OPENAI_MODEL="gpt-4.1"
 ```
 
+## Agent Instructions
+
+Create an `instructions.md` file in the project root with the agent system prompt:
+
+```markdown
+You are a helpful financial assistant. Help users look up stock data,
+news, and market information. Always include ticker symbols.
+Respond in the user's language. Keep responses concise.
+```
+
+An example is provided in `instructions.md.example`. The bot will fail to start if this file is missing.
+
 ## MCP Server Configuration (Optional)
 
 Create a `servers_config.json` to connect MCP servers. If the file is absent, the bot starts with no tools.
 
 ```json
 {
-  "instructions": "Your custom system prompt here.",
   "mcpServers": {
     "my-server": {
       "command": "uvx",
@@ -150,7 +165,28 @@ To find IDs in Discord, enable **Developer Mode**, then right-click the server i
 
 Each user has an independent conversation history per channel or thread. Replying to the bot's message continues the same conversation. Starting a thread creates a fresh context for that thread.
 
-History is capped at the last 25 turns per conversation.
+History is capped at the last 10 turns per conversation.
+
+## Shell Skills (Optional)
+
+The bot can execute local shell commands via skills defined in a `skills/` directory. Each subdirectory containing a `SKILL.md` file is registered as a skill.
+
+This feature is **disabled by default**. To enable it, set:
+
+```
+SHELL_SKILLS_ENABLED=1
+```
+
+Skills are auto-discovered at startup. The `SKILL.md` file should have YAML frontmatter with `name` and `description` fields:
+
+```markdown
+---
+name: my-skill
+description: A brief description of what this skill does
+---
+
+Detailed instructions for the agent...
+```
 
 ## Docker
 
@@ -162,6 +198,7 @@ docker run -d \
   -e DISCORD_BOT_TOKEN="" \
   -e OPENAI_API_KEY="" \
   -e OPENAI_MODEL="gpt-4.1" \
+  -v /path/to/instructions.md:/app/instructions.md \
   -v /path/to/access.json:/app/access.json \
   agentic-discord-bot
 ```
@@ -174,6 +211,7 @@ docker run -d \
   -e DISCORD_BOT_TOKEN="" \
   -e OPENAI_API_KEY="" \
   -e OPENAI_MODEL="gpt-4.1" \
+  -v /path/to/instructions.md:/app/instructions.md \
   -v /path/to/servers_config.json:/app/servers_config.json \
   -v /path/to/access.json:/app/access.json \
   agentic-discord-bot
