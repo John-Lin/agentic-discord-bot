@@ -20,12 +20,13 @@ from agents.models.openai_responses import OpenAIResponsesModel
 from agents.tracing import set_tracing_disabled
 from openai import AsyncOpenAI
 
+from .config import env_flag
+
 INSTRUCTIONS_FILE = Path("instructions.md")
 
 MAX_TURNS = 10
 MCP_SESSION_TIMEOUT_SECONDS = 30.0
 SHELL_TIMEOUT = 30.0
-SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
 
 set_tracing_disabled(True)
 
@@ -84,23 +85,23 @@ def _parse_skill_description(content: str) -> str:
     return ""
 
 
-def _load_shell_skills() -> list[ShellToolLocalSkill]:
-    """Discover local shell skills under SKILLS_DIR.
+def _load_shell_skills(skills_dir: Path) -> list[ShellToolLocalSkill]:
+    """Discover local shell skills under ``skills_dir``.
 
-    Each immediate subdirectory of SKILLS_DIR containing a SKILL.md is mounted
-    as a ShellToolLocalSkill. The skill name is the directory name; the
-    description is read from the SKILL.md YAML frontmatter.
+    Each immediate subdirectory containing a ``SKILL.md`` file is mounted as a
+    ``ShellToolLocalSkill``. The skill name is the directory name; the
+    description is read from the ``SKILL.md`` YAML frontmatter.
     """
-    if not SKILLS_DIR.is_dir():
+    if not skills_dir.is_dir():
         return []
     skills: list[ShellToolLocalSkill] = []
-    for skill_dir in sorted(SKILLS_DIR.iterdir()):
+    for skill_dir in sorted(skills_dir.iterdir()):
         skill_md = skill_dir / "SKILL.md"
         if not skill_dir.is_dir() or not skill_md.is_file():
             continue
         try:
             content = skill_md.read_text(encoding="utf-8")
-        except OSError, UnicodeDecodeError:
+        except (OSError, UnicodeDecodeError):
             logging.warning("Skipping unreadable skill file: %s", skill_md, exc_info=True)
             continue
         skills.append(
@@ -111,6 +112,37 @@ def _load_shell_skills() -> list[ShellToolLocalSkill]:
             )
         )
     return skills
+
+
+def _get_shell_environment() -> ShellToolLocalEnvironment | None:
+    """Return the configured local shell environment, if enabled.
+
+    Controlled by two independent environment variables:
+
+    * ``SHELL_ENABLED`` — when truthy, the ``ShellTool`` is attached to the agent.
+    * ``SHELL_SKILLS_DIR`` — optional path; when set, skills discovered under it
+      are mounted alongside the shell. Ignored if ``SHELL_ENABLED`` is not set.
+    """
+    skills_dir_env = os.getenv("SHELL_SKILLS_DIR")
+    if not env_flag("SHELL_ENABLED"):
+        if skills_dir_env:
+            logging.warning(
+                "SHELL_SKILLS_DIR=%r is set but SHELL_ENABLED is not; ignoring skills dir.",
+                skills_dir_env,
+            )
+        return None
+
+    environment: ShellToolLocalEnvironment = {"type": "local"}
+    if skills_dir_env:
+        skills = _load_shell_skills(Path(skills_dir_env))
+        if skills:
+            environment["skills"] = skills
+        else:
+            logging.warning(
+                "SHELL_SKILLS_DIR=%r yielded no skills; attaching bare local shell.",
+                skills_dir_env,
+            )
+    return environment
 
 
 async def _shell_executor(request: ShellCommandRequest) -> str:
@@ -219,11 +251,9 @@ class OpenAIAgent:
                     )
                 )
         tools: list[Any] = []
-        if os.getenv("SHELL_SKILLS_ENABLED"):
-            skills = _load_shell_skills()
-            if skills:
-                environment = ShellToolLocalEnvironment(type="local", skills=skills)
-                tools.append(ShellTool(executor=_shell_executor, environment=environment))
+        environment = _get_shell_environment()
+        if environment is not None:
+            tools.append(ShellTool(executor=_shell_executor, environment=environment))
 
         instructions = _load_instructions()
         return cls(name, instructions=instructions, mcp_servers=mcp_servers, tools=tools)
