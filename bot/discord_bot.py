@@ -73,6 +73,8 @@ class DiscordMCPBot:
         )
 
     async def _handle_guild(self, message: discord.Message) -> None:
+        # Narrowed by the caller (on_message dispatches to _handle_dm when guild is None).
+        assert message.guild is not None
         guild_config = await asyncio.to_thread(get_guild_config, message.guild.id)
         if guild_config is None:
             return  # Guild not configured
