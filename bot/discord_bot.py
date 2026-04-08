@@ -4,14 +4,17 @@ import asyncio
 import logging
 
 import discord
+from agent_core import OpenAIAgent
 
-from .agent import ConversationKey
-from .agent import OpenAIAgent
 from .auth import create_pairing_code
 from .auth import get_dm_policy
 from .auth import get_guild_config
 from .auth import is_allowed
 from .formatting import split_message
+
+# Conversation key: (channel_id, user_id) — each user has an independent
+# conversation history per channel/thread.
+ConversationKey = tuple[int, int]
 
 
 class DiscordMCPBot:
