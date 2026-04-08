@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from unittest.mock import patch
 
 import pytest
@@ -11,8 +10,6 @@ from bot.auth import allow_user
 from bot.auth import create_pairing_code
 from bot.auth import get_dm_policy
 from bot.auth import is_allowed
-from bot.auth import load_auth
-from bot.auth import save_auth
 
 
 @pytest.fixture(autouse=True)

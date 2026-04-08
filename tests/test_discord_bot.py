@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -88,8 +87,9 @@ class TestDmHandling:
     async def test_dm_from_allowed_user_triggers_agent(self, bot):
         msg = _make_dm_message(user_id=1, channel_id=10, text="hello")
 
-        with patch("bot.discord_bot.get_dm_policy", return_value="allowlist"), patch(
-            "bot.discord_bot.is_allowed", return_value=True
+        with (
+            patch("bot.discord_bot.get_dm_policy", return_value="allowlist"),
+            patch("bot.discord_bot.is_allowed", return_value=True),
         ):
             await bot.on_message(msg)
 
@@ -99,8 +99,9 @@ class TestDmHandling:
     async def test_dm_from_unknown_user_silently_dropped_with_allowlist(self, bot):
         msg = _make_dm_message(user_id=99, channel_id=10, text="hello")
 
-        with patch("bot.discord_bot.get_dm_policy", return_value="allowlist"), patch(
-            "bot.discord_bot.is_allowed", return_value=False
+        with (
+            patch("bot.discord_bot.get_dm_policy", return_value="allowlist"),
+            patch("bot.discord_bot.is_allowed", return_value=False),
         ):
             await bot.on_message(msg)
 
@@ -119,8 +120,9 @@ class TestDmHandling:
     async def test_dm_sends_agent_reply(self, bot):
         msg = _make_dm_message(user_id=1, channel_id=10, text="hi")
 
-        with patch("bot.discord_bot.get_dm_policy", return_value="allowlist"), patch(
-            "bot.discord_bot.is_allowed", return_value=True
+        with (
+            patch("bot.discord_bot.get_dm_policy", return_value="allowlist"),
+            patch("bot.discord_bot.is_allowed", return_value=True),
         ):
             await bot.on_message(msg)
 
@@ -133,9 +135,11 @@ class TestDmPairing:
     async def test_dm_pairing_sends_code_to_unknown_user(self, bot):
         msg = _make_dm_message(user_id=42, channel_id=10, text="hello")
 
-        with patch("bot.discord_bot.get_dm_policy", return_value="pairing"), patch(
-            "bot.discord_bot.is_allowed", return_value=False
-        ), patch("bot.discord_bot.create_pairing_code", return_value="ABC123"):
+        with (
+            patch("bot.discord_bot.get_dm_policy", return_value="pairing"),
+            patch("bot.discord_bot.is_allowed", return_value=False),
+            patch("bot.discord_bot.create_pairing_code", return_value="ABC123"),
+        ):
             await bot.on_message(msg)
 
         bot.agent.run.assert_not_called()
@@ -148,8 +152,9 @@ class TestDmPairing:
     async def test_dm_pairing_allowed_user_bypasses_pairing(self, bot):
         msg = _make_dm_message(user_id=1, channel_id=10, text="hello")
 
-        with patch("bot.discord_bot.get_dm_policy", return_value="pairing"), patch(
-            "bot.discord_bot.is_allowed", return_value=True
+        with (
+            patch("bot.discord_bot.get_dm_policy", return_value="pairing"),
+            patch("bot.discord_bot.is_allowed", return_value=True),
         ):
             await bot.on_message(msg)
 
@@ -160,9 +165,11 @@ class TestDmPairing:
         msg = _make_dm_message(user_id=42, channel_id=10, text="hello")
         msg.author.name = "testuser"
 
-        with patch("bot.discord_bot.get_dm_policy", return_value="pairing"), patch(
-            "bot.discord_bot.is_allowed", return_value=False
-        ), patch("bot.discord_bot.create_pairing_code", return_value="XYZ789") as mock_create:
+        with (
+            patch("bot.discord_bot.get_dm_policy", return_value="pairing"),
+            patch("bot.discord_bot.is_allowed", return_value=False),
+            patch("bot.discord_bot.create_pairing_code", return_value="XYZ789") as mock_create,
+        ):
             await bot.on_message(msg)
 
         mock_create.assert_called_once_with(42, "testuser")
@@ -269,8 +276,9 @@ class TestLongMessageSplitting:
         bot.agent.run = AsyncMock(return_value="x" * 5000)
         msg = _make_dm_message(user_id=1, channel_id=10, text="hi")
 
-        with patch("bot.discord_bot.get_dm_policy", return_value="allowlist"), patch(
-            "bot.discord_bot.is_allowed", return_value=True
+        with (
+            patch("bot.discord_bot.get_dm_policy", return_value="allowlist"),
+            patch("bot.discord_bot.is_allowed", return_value=True),
         ):
             await bot.on_message(msg)
 
@@ -282,8 +290,9 @@ class TestTypingIndicator:
     async def test_typing_context_manager_used_during_response(self, bot):
         msg = _make_dm_message(user_id=1, channel_id=10, text="hi")
 
-        with patch("bot.discord_bot.get_dm_policy", return_value="allowlist"), patch(
-            "bot.discord_bot.is_allowed", return_value=True
+        with (
+            patch("bot.discord_bot.get_dm_policy", return_value="allowlist"),
+            patch("bot.discord_bot.is_allowed", return_value=True),
         ):
             await bot.on_message(msg)
 
@@ -306,8 +315,9 @@ class TestTypingIndicator:
         msg.channel.typing.return_value.__aexit__ = tracking_aexit
         msg.channel.send = tracking_send
 
-        with patch("bot.discord_bot.get_dm_policy", return_value="allowlist"), patch(
-            "bot.discord_bot.is_allowed", return_value=True
+        with (
+            patch("bot.discord_bot.get_dm_policy", return_value="allowlist"),
+            patch("bot.discord_bot.is_allowed", return_value=True),
         ):
             await bot.on_message(msg)
 

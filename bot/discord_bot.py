@@ -12,7 +12,6 @@ from .auth import get_dm_policy
 from .auth import get_guild_config
 from .auth import is_allowed
 from .formatting import split_message
-from .formatting import to_discord_markdown
 
 
 class DiscordMCPBot:
@@ -102,6 +101,5 @@ class DiscordMCPBot:
                 await message.channel.send("I'm sorry, I encountered an error processing your request.")
                 return
 
-            formatted = to_discord_markdown(response)
-            for chunk in split_message(formatted):
+            for chunk in split_message(response.strip()):
                 await message.channel.send(chunk)

@@ -11,7 +11,7 @@ See also: [agentic-slackbot](https://github.com/John-Lin/agentic-slackbot) and [
 - Per-(channel, user) conversation history — each user maintains an independent context per channel/thread
 - Configurable guild access with per-channel and per-user filters
 - Connects to any MCP server via `servers_config.json`
-- Local shell skills via `ShellTool` (opt-in via `SHELL_SKILLS_ENABLED`)
+- Optional local shell via `ShellTool`, controlled by `SHELL_ENABLED` and `SHELL_SKILLS_DIR`
 - Supports OpenAI and OpenAI-compatible endpoints (including Azure OpenAI v1 API)
 
 ## Install Dependencies
@@ -41,8 +41,12 @@ DISCORD_BOT_TOKEN=""
 OPENAI_API_KEY=""
 OPENAI_MODEL="gpt-4.1"
 
-# Shell skills (disabled by default)
-# SHELL_SKILLS_ENABLED=1
+# Local shell (disabled by default)
+# SHELL_ENABLED=1
+# SHELL_SKILLS_DIR="./skills"  # optional; mount skills alongside the shell
+
+# Optional verbose OpenAI Agents SDK logging
+# AGENT_VERBOSE_LOG=1
 ```
 
 If you are using Azure OpenAI (v1 API):
@@ -96,6 +100,19 @@ For HTTP-based MCP servers (Streamable HTTP):
 }
 ```
 
+For local MCP servers, use `uv --directory`:
+
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/my-server", "run", "my-entrypoint"]
+    }
+  }
+}
+```
+
 ## Running the Bot
 
 ```bash
@@ -110,7 +127,8 @@ All access is managed via `access.json` (auto-created, gitignored).
 
 | Policy | Behaviour |
 |---|---|
-| `allowlist` (default) | Only users in the allowlist can DM the bot |
+| `pairing` (default) | Unknown users receive a 6-character pairing code via DM |
+| `allowlist` | Only users in the allowlist can DM the bot |
 | `disabled` | All DMs are silently dropped |
 
 ```bash
@@ -118,7 +136,13 @@ All access is managed via `access.json` (auto-created, gitignored).
 uv run bot access policy
 
 # Set policy
-uv run bot access policy <allowlist|disabled>
+uv run bot access policy <pairing|allowlist|disabled>
+```
+
+When `dmPolicy` is `pairing`, confirm the code in your terminal:
+
+```bash
+uv run bot access pair <CODE>
 ```
 
 ### Users
@@ -167,17 +191,28 @@ Each user has an independent conversation history per channel or thread. Replyin
 
 History is capped at the last 10 turns per conversation.
 
-## Shell Skills (Optional)
+## Local Shell (Optional)
 
-The bot can execute local shell commands via skills defined in a `skills/` directory. Each subdirectory containing a `SKILL.md` file is registered as a skill.
-
-This feature is **disabled by default**. To enable it, set:
+The bot can expose a local `ShellTool`. This is **disabled by default**. Enable it with:
 
 ```
-SHELL_SKILLS_ENABLED=1
+SHELL_ENABLED=1
 ```
 
-Skills are auto-discovered at startup. The `SKILL.md` file should have YAML frontmatter with `name` and `description` fields:
+With just `SHELL_ENABLED=1`, the agent gets bare local shell access with no pre-defined skills.
+
+### Shell Skills (Optional)
+
+You can optionally mount a skills directory alongside the shell. Each immediate subdirectory containing a `SKILL.md` file is registered as a skill and exposed to the agent as a hint (skills are advisory metadata — they do **not** sandbox command execution).
+
+```
+SHELL_ENABLED=1
+SHELL_SKILLS_DIR="./skills"
+```
+
+`SHELL_SKILLS_DIR` is ignored unless `SHELL_ENABLED` is set. If the directory is missing or contains no valid skills, the bot falls back to a bare shell and logs a warning.
+
+The `SKILL.md` file should have YAML frontmatter with `name` and `description` fields:
 
 ```markdown
 ---
