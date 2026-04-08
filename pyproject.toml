@@ -5,6 +5,7 @@ description = "Agentic Discord Bot powered by OpenAI Agents SDK with MCP support
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "agent-core @ git+https://github.com/John-Lin/agent-core.git",
     "discord.py>=2.4.0",
     "openai-agents>=0.13.0",
     "python-dotenv>=1.1.0",
@@ -62,6 +63,9 @@ log_file = "logs/pytest.log"
 log_file_level = "INFO"
 log_format = "%(asctime)s %(levelname)s %(message)s"
 log_date_format = "%Y-%m-%d %H:%M:%S"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["bot"]

@@ -6,9 +6,9 @@ import contextlib
 import logging
 import sys
 
+from agent_core import OpenAIAgent
 from agents import enable_verbose_stdout_logging
 
-from bot.agent import OpenAIAgent
 from bot.auth import add_guild
 from bot.auth import allow_user
 from bot.auth import confirm_pairing

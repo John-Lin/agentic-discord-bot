@@ -10,7 +10,14 @@ from bot.config import env_flag
 
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch):
-    """Remove bot-related env vars so tests start from a clean state."""
+    """Isolate tests from the developer's on-disk .env file.
+
+    Configuration.__init__ calls load_dotenv, which would otherwise read
+    the repo-root .env and silently re-populate any env var the test had
+    just cleared. Stub it out so tests see exactly what they set via
+    monkeypatch.
+    """
+    monkeypatch.setattr("bot.config.load_dotenv", lambda *args, **kwargs: None)
     for key in ("DISCORD_BOT_TOKEN", "OPENAI_API_KEY", "OPENAI_MODEL"):
         monkeypatch.delenv(key, raising=False)
 
