@@ -52,8 +52,8 @@ select = [
 [tool.ruff.lint.isort]
 force-single-line = true
 
-[tool.ty]
-type-checking-mode = "strict"
+[tool.ty.rules]
+all = "error"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
