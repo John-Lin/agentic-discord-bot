@@ -43,7 +43,8 @@ class DiscordMCPBot:
         logging.info(f"Initialized agent {self.agent.name}")
 
     async def on_message(self, message: discord.Message) -> None:
-        if message.author.bot:
+        # Ignore messages from itself to avoid infinite loops.
+        if message.author.id == self._client.user.id:
             return
 
         if message.guild is None:
