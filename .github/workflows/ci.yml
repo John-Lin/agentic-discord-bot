@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v8
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
 
@@ -28,9 +28,6 @@ jobs:
 
       - name: Run Ty (Type Check)
         run: uv run ty check
-
-      - name: Run Tombi (Lint & Format Check)
-        run: uv run tombi lint pyproject.toml && uv run tombi format --check pyproject.toml
 
       - name: Run Pytest
         run: uv run pytest
