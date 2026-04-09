@@ -39,7 +39,6 @@ Create a `.env` file in the root directory:
 ```
 DISCORD_BOT_TOKEN=""
 OPENAI_API_KEY=""
-OPENAI_MODEL="gpt-4.1"
 
 # Local shell (disabled by default)
 # SHELL_ENABLED=1
@@ -55,7 +54,6 @@ If you are using Azure OpenAI (v1 API):
 DISCORD_BOT_TOKEN=""
 OPENAI_API_KEY=""
 OPENAI_BASE_URL="https://<resource-name>.openai.azure.com/openai/v1/"
-OPENAI_MODEL="gpt-4.1"
 ```
 
 ## Agent Instructions
@@ -76,6 +74,7 @@ Create a `servers_config.json` to connect MCP servers. If the file is absent, th
 
 ```json
 {
+  "model": "gpt-5.4",
   "mcpServers": {
     "my-server": {
       "command": "uvx",
@@ -84,6 +83,8 @@ Create a `servers_config.json` to connect MCP servers. If the file is absent, th
   }
 }
 ```
+
+`model` is optional and defaults to `gpt-5.4`. Each MCP server also accepts `timeout` (seconds, default `30.0`) and `enabled` (default `true`).
 
 For HTTP-based MCP servers (Streamable HTTP):
 
@@ -189,7 +190,7 @@ To find IDs in Discord, enable **Developer Mode**, then right-click the server i
 
 Each user has an independent conversation history per channel or thread. Replying to the bot's message continues the same conversation. Starting a thread creates a fresh context for that thread.
 
-History is capped at the last 10 turns per conversation.
+History is capped at the last N turns per conversation (default 10, configurable via `maxTurns` in `servers_config.json`).
 
 ## Local Shell (Optional)
 
@@ -232,7 +233,6 @@ docker run -d \
   --name discordbot \
   -e DISCORD_BOT_TOKEN="" \
   -e OPENAI_API_KEY="" \
-  -e OPENAI_MODEL="gpt-4.1" \
   -v /path/to/instructions.md:/app/instructions.md \
   -v /path/to/access.json:/app/access.json \
   agentic-discord-bot
@@ -245,7 +245,6 @@ docker run -d \
   --name discordbot \
   -e DISCORD_BOT_TOKEN="" \
   -e OPENAI_API_KEY="" \
-  -e OPENAI_MODEL="gpt-4.1" \
   -v /path/to/instructions.md:/app/instructions.md \
   -v /path/to/servers_config.json:/app/servers_config.json \
   -v /path/to/access.json:/app/access.json \

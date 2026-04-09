@@ -18,7 +18,7 @@ def clean_env(monkeypatch):
     monkeypatch.
     """
     monkeypatch.setattr("bot.config.load_dotenv", lambda *args, **kwargs: None)
-    for key in ("DISCORD_BOT_TOKEN", "OPENAI_API_KEY", "OPENAI_MODEL"):
+    for key in ("DISCORD_BOT_TOKEN", "OPENAI_API_KEY"):
         monkeypatch.delenv(key, raising=False)
 
 
