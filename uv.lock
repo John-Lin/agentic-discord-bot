@@ -47,7 +47,7 @@ dev = [
     { name = "pytest-anyio", specifier = ">=0.0.0" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "ruff", specifier = ">=0.7.3" },
-    { name = "ty", specifier = ">=0.0.18" },
+    { name = "ty", specifier = ">=0.0.29" },
 ]
 
 [[package]]
