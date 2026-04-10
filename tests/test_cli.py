@@ -113,6 +113,7 @@ class TestAccessGuildAdd:
 
         _run(["access", "guild", "add", "111222333", "--allow", "111,222"])
         config = get_guild_config(111222333)
+        assert config is not None
         assert config["allowFrom"] == ["111", "222"]
 
     def test_add_guild_with_channel(self):
@@ -120,6 +121,7 @@ class TestAccessGuildAdd:
 
         _run(["access", "guild", "add", "111222333", "--channel", "555,666"])
         config = get_guild_config(111222333)
+        assert config is not None
         assert config["channels"] == ["555", "666"]
 
 

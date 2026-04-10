@@ -43,6 +43,7 @@ class DiscordMCPBot:
         logging.info(f"Initialized agent {self.agent.name}")
 
     async def on_message(self, message: discord.Message) -> None:
+        assert self._client.user is not None
         if message.author.id == self._client.user.id:
             return
 
@@ -101,11 +102,15 @@ class DiscordMCPBot:
 
         ref = message.reference.resolved
         if ref is None:
+            if message.reference.message_id is None:
+                return message.content
             try:
                 ref = await message.channel.fetch_message(message.reference.message_id)
             except discord.NotFound:
                 return message.content
 
+        if isinstance(ref, discord.DeletedReferencedMessage):
+            return message.content
         return f"[Replying to {ref.author.display_name}: {ref.content}]\n{message.content}"
 
     async def _respond(self, message: discord.Message) -> None:

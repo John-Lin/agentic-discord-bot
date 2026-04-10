@@ -234,11 +234,13 @@ class TestGuildAccess:
     def test_add_guild_with_allowed_members(self):
         add_guild(123456789, allowed_members=[111, 222])
         config = get_guild_config(123456789)
+        assert config is not None
         assert config["allowFrom"] == ["111", "222"]
 
     def test_add_guild_with_channels(self):
         add_guild(123456789, channels=[999, 888])
         config = get_guild_config(123456789)
+        assert config is not None
         assert config["channels"] == ["999", "888"]
 
     def test_get_guild_config_unknown_guild(self):
@@ -268,6 +270,7 @@ class TestGuildAccess:
         add_guild(123456789)
         add_guild(123456789, allowed_members=[111], channels=[999])
         config = get_guild_config(123456789)
+        assert config is not None
         assert config["allowFrom"] == ["111"]
         assert config["channels"] == ["999"]
 
