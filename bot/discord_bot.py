@@ -95,12 +95,26 @@ class DiscordMCPBot:
         if bot_user is not None and any(m.id == bot_user.id for m in message.mentions):
             await self._respond(message)
 
+    async def _build_content(self, message: discord.Message) -> str:
+        if message.reference is None:
+            return message.content
+
+        ref = message.reference.resolved
+        if ref is None:
+            try:
+                ref = await message.channel.fetch_message(message.reference.message_id)
+            except discord.NotFound:
+                return message.content
+
+        return f"[Replying to {ref.author.display_name}: {ref.content}]\n{message.content}"
+
     async def _respond(self, message: discord.Message) -> None:
         key: ConversationKey = (message.channel.id, message.author.id)
+        content = await self._build_content(message)
 
         async with message.channel.typing():
             try:
-                response = await self.agent.run(key, message.content)
+                response = await self.agent.run(key, content)
             except Exception as e:
                 logging.error(f"Error processing message: {e}", exc_info=True)
                 await message.channel.send("I'm sorry, I encountered an error processing your request.")
