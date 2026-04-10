@@ -99,7 +99,7 @@ class TestDmHandling:
         ):
             await bot.on_message(msg)
 
-        bot.agent.run.assert_called_once_with((10, 1), "hello")
+        bot.agent.run.assert_called_once_with(10, "hello")
 
     @pytest.mark.anyio
     async def test_dm_from_unknown_user_silently_dropped_with_allowlist(self, bot):
@@ -200,7 +200,7 @@ class TestGuildHandling:
         with patch("bot.discord_bot.get_guild_config", return_value={"allowFrom": [], "channels": []}):
             await bot.on_message(msg)
 
-        bot.agent.run.assert_called_once_with((10, 1), "<@999> hello")
+        bot.agent.run.assert_called_once_with(10, "<@999> hello")
 
     @pytest.mark.anyio
     async def test_unconfigured_guild_silently_ignored(self, bot):
@@ -330,7 +330,7 @@ class TestReplyContext:
         ):
             await bot.on_message(msg)
 
-        bot.agent.run.assert_called_once_with((10, 1), "hello")
+        bot.agent.run.assert_called_once_with(10, "hello")
 
     @pytest.mark.anyio
     async def test_resolved_reference_prepends_quoted_content(self, bot):
@@ -350,7 +350,7 @@ class TestReplyContext:
             await bot.on_message(msg)
 
         expected = "[Replying to Alice: 今天天氣如何]\nwhat do you think?"
-        bot.agent.run.assert_called_once_with((10, 1), expected)
+        bot.agent.run.assert_called_once_with(10, expected)
 
     @pytest.mark.anyio
     async def test_unresolved_reference_fetches_message(self, bot):
@@ -373,7 +373,7 @@ class TestReplyContext:
 
         msg.channel.fetch_message.assert_called_once_with(42)
         expected = "[Replying to Bob: Python is great]\nagree"
-        bot.agent.run.assert_called_once_with((10, 1), expected)
+        bot.agent.run.assert_called_once_with(10, expected)
 
     @pytest.mark.anyio
     async def test_fetch_not_found_falls_back_to_plain_content(self, bot):
@@ -390,7 +390,7 @@ class TestReplyContext:
         ):
             await bot.on_message(msg)
 
-        bot.agent.run.assert_called_once_with((10, 1), "interesting")
+        bot.agent.run.assert_called_once_with(10, "interesting")
 
 
 class TestGuildConfigFallback:

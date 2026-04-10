@@ -12,9 +12,9 @@ from .auth import get_guild_config
 from .auth import is_allowed
 from .formatting import split_message
 
-# Conversation key: (channel_id, user_id) — each user has an independent
-# conversation history per channel/thread.
-ConversationKey = tuple[int, int]
+# Conversation key: channel_id (or thread_id) — all participants in a
+# channel/thread share one conversation history.
+ConversationKey = int
 
 
 class DiscordMCPBot:
@@ -109,7 +109,7 @@ class DiscordMCPBot:
         return f"[Replying to {ref.author.display_name}: {ref.content}]\n{message.content}"
 
     async def _respond(self, message: discord.Message) -> None:
-        key: ConversationKey = (message.channel.id, message.author.id)
+        key: ConversationKey = message.channel.id
         content = await self._build_content(message)
 
         async with message.channel.typing():
