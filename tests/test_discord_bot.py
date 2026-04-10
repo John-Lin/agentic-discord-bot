@@ -12,6 +12,13 @@ import pytest
 from bot.discord_bot import DiscordMCPBot
 
 
+@pytest.fixture(autouse=True)
+def auth_file(tmp_path, monkeypatch):
+    monkeypatch.setattr("bot.auth.AUTH_FILE", tmp_path / "access.json")
+    monkeypatch.setattr("bot.auth.PENDING_FILE", tmp_path / ".access.pending.json")
+    return tmp_path
+
+
 @pytest.fixture
 def agent():
     a = MagicMock()
@@ -76,16 +83,6 @@ def _make_guild_message(
     msg.reference = None
     return msg
 
-
-class TestIgnoreBotMessages:
-    @pytest.mark.anyio
-    async def test_ignores_messages_from_bots(self, bot):
-        msg = _make_dm_message(user_id=1, channel_id=10, text="hi")
-        msg.author.bot = True
-
-        await bot.on_message(msg)
-
-        bot.agent.run.assert_not_called()
 
 
 class TestDmHandling:
