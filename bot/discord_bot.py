@@ -44,6 +44,8 @@ class DiscordMCPBot:
 
     async def on_message(self, message: discord.Message) -> None:
         assert self._client.user is not None
+        if message.author.bot:
+            return
         if message.author.id == self._client.user.id:
             return
 
