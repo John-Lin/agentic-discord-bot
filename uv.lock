@@ -5,7 +5,7 @@ requires-python = ">=3.14"
 [[package]]
 name = "agent-core"
 version = "0.1.0"
-source = { git = "https://github.com/John-Lin/agent-core.git?rev=main#2c54b37ee8cb7b347a9de66e7342e208ba548645" }
+source = { git = "https://github.com/John-Lin/agent-core.git?rev=main#f1aa60a57467ba9cdfa7b680ce117746a5fa2981" }
 dependencies = [
     { name = "openai-agents" },
     { name = "python-dotenv" },
