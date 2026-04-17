@@ -6,7 +6,7 @@ import contextlib
 import logging
 import sys
 
-from agent_core import OpenAIAgent
+from agent_core import build_agent
 from agents import enable_verbose_stdout_logging
 
 from bot.auth import add_guild
@@ -35,9 +35,9 @@ async def start_bot() -> None:
     config = Configuration()
 
     server_config = config.load_config("servers_config.json")
-    openai_agent = OpenAIAgent.from_dict("Discord Bot Agent", server_config)
+    agent = build_agent("Discord Bot Agent", server_config)
 
-    discord_bot = DiscordMCPBot(config.discord_bot_token, openai_agent)
+    discord_bot = DiscordMCPBot(config.discord_bot_token, agent)
 
     try:
         await discord_bot.start()
@@ -47,7 +47,7 @@ async def start_bot() -> None:
         logging.error(f"Error: {e}", exc_info=True)
     finally:
         await discord_bot.close()
-        await openai_agent.cleanup()
+        await agent.cleanup()
 
 
 def cmd_pair(args: argparse.Namespace) -> None:

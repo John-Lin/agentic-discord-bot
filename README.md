@@ -1,6 +1,11 @@
 # agentic-discord-bot
 
-A Discord bot that uses the [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) to interact with [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) servers.
+A Discord bot powered by [agent-core](https://github.com/John-Lin/agent-core) that interacts with [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) servers. Supports two interchangeable providers:
+
+- **OpenAI** (default) — via [OpenAI Agents SDK](https://github.com/openai/openai-agents-python); works with OpenAI and Azure OpenAI v1.
+- **Claude** — via [claude-agent-sdk](https://pypi.org/project/claude-agent-sdk/).
+
+Switch providers by setting `"provider"` in `servers_config.json`.
 
 See also: [agentic-slackbot](https://github.com/John-Lin/agentic-slackbot) and [agentic-telegram-bot](https://github.com/John-Lin/agentic-telegram-bot) — similar bots for Slack and Telegram.
 
@@ -11,8 +16,8 @@ See also: [agentic-slackbot](https://github.com/John-Lin/agentic-slackbot) and [
 - Per-(channel, user) conversation history — each user maintains an independent context per channel/thread
 - Configurable guild access with per-channel and per-user filters
 - Connects to any MCP server via `servers_config.json`
-- Optional local shell via `ShellTool`, controlled by `SHELL_ENABLED` and `SHELL_SKILLS_DIR`
-- Supports OpenAI and OpenAI-compatible endpoints (including Azure OpenAI v1 API)
+- Optional local shell: `ShellTool` (OpenAI) or `Bash`/`Read`/`Glob`/`Grep` (Claude), controlled by `SHELL_ENABLED`
+- Supports OpenAI, Azure OpenAI v1, and Anthropic Claude
 
 ## Install Dependencies
 
@@ -34,17 +39,22 @@ uv sync
 
 ## Environment Variables
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory. Set the key(s) for the provider you plan to use:
 
 ```
 DISCORD_BOT_TOKEN=""
+
+# OpenAI provider (default)
 OPENAI_API_KEY=""
+
+# Claude provider
+# ANTHROPIC_API_KEY=""
 
 # Local shell (disabled by default)
 # SHELL_ENABLED=1
-# SHELL_SKILLS_DIR="./skills"  # optional; mount skills alongside the shell
+# SHELL_SKILLS_DIR="./skills"  # OpenAI only; mount skills alongside the shell
 
-# Optional verbose OpenAI Agents SDK logging
+# Optional verbose OpenAI Agents SDK logging (OpenAI only)
 # AGENT_VERBOSE_LOG=1
 ```
 
@@ -68,12 +78,15 @@ Respond in the user's language. Keep responses concise.
 
 An example is provided in `instructions.md.example`. The bot will fail to start if this file is missing.
 
-## MCP Server Configuration (Optional)
+## Provider & MCP Server Configuration (Optional)
 
-Create a `servers_config.json` to connect MCP servers. If the file is absent, the bot starts with no tools.
+Create a `servers_config.json` to choose a provider and connect MCP servers. If the file is absent, the bot starts with the default OpenAI provider and no tools.
+
+### OpenAI provider (default)
 
 ```json
 {
+  "provider": "openai",
   "model": "gpt-5.4",
   "mcpServers": {
     "my-server": {
@@ -84,9 +97,32 @@ Create a `servers_config.json` to connect MCP servers. If the file is absent, th
 }
 ```
 
-`model` is optional and defaults to `gpt-5.4`. Each MCP server also accepts `timeout` (seconds, default `30.0`) and `enabled` (default `true`).
+`provider` defaults to `"openai"`; `model` defaults to `gpt-5.4`. Each MCP server also accepts `timeout` (seconds, default `30.0`) and `enabled` (default `true`).
 
-For HTTP-based MCP servers (Streamable HTTP):
+### Claude provider
+
+```json
+{
+  "provider": "claude",
+  "model": "claude-sonnet-4-6",
+  "maxTurns": 10,
+  "allowedTools": ["WebFetch"],
+  "mcpServers": {
+    "my-stdio": {
+      "command": "python",
+      "args": ["-m", "srv"]
+    },
+    "my-http": {
+      "url": "https://example.com/mcp",
+      "headers": {"Authorization": "Bearer x"}
+    }
+  }
+}
+```
+
+Requires `ANTHROPIC_API_KEY`. `allowedTools` extends the built-in set (`Bash`/`Read`/`Glob`/`Grep` when `SHELL_ENABLED=1`) with additional Claude tools such as `WebFetch`, `Write`, `Edit`. Billing/rate-limit/`error_max_turns` errors are surfaced to the channel as a readable message.
+
+### HTTP MCP servers (OpenAI, Streamable HTTP)
 
 ```json
 {
@@ -101,7 +137,7 @@ For HTTP-based MCP servers (Streamable HTTP):
 }
 ```
 
-For local MCP servers, use `uv --directory`:
+### Local MCP servers (OpenAI, via `uv --directory`)
 
 ```json
 {
@@ -194,24 +230,27 @@ History is capped at the last N turns per conversation (default 10, configurable
 
 ## Local Shell (Optional)
 
-The bot can expose a local `ShellTool`. This is **disabled by default**. Enable it with:
+Local shell tools are **disabled by default**. Enable with:
 
 ```
 SHELL_ENABLED=1
 ```
 
-With just `SHELL_ENABLED=1`, the agent gets bare local shell access with no pre-defined skills.
+Behaviour depends on the provider:
 
-### Shell Skills (Optional)
+- **OpenAI**: attaches a `ShellTool` (bare local shell). Optionally mount a skills directory with `SHELL_SKILLS_DIR`.
+- **Claude**: allows the SDK's built-in `Bash`, `Read`, `Glob`, `Grep` tools. Extra Claude tools (e.g. `WebFetch`, `Write`, `Edit`) are declared via `"allowedTools"` in `servers_config.json`. `SHELL_SKILLS_DIR` is ignored.
 
-You can optionally mount a skills directory alongside the shell. Each immediate subdirectory containing a `SKILL.md` file is registered as a skill and exposed to the agent as a hint (skills are advisory metadata — they do **not** sandbox command execution).
+### Shell Skills (OpenAI only)
+
+You can mount a skills directory alongside the shell. Each immediate subdirectory containing a `SKILL.md` file is registered as a skill and exposed to the agent as a hint (skills are advisory metadata — they do **not** sandbox command execution).
 
 ```
 SHELL_ENABLED=1
 SHELL_SKILLS_DIR="./skills"
 ```
 
-`SHELL_SKILLS_DIR` is ignored unless `SHELL_ENABLED` is set. If the directory is missing or contains no valid skills, the bot falls back to a bare shell and logs a warning.
+`SHELL_SKILLS_DIR` is ignored unless `SHELL_ENABLED` is set and the OpenAI provider is in use. If the directory is missing or contains no valid skills, the bot falls back to a bare shell and logs a warning.
 
 The `SKILL.md` file should have YAML frontmatter with `name` and `description` fields:
 
@@ -229,6 +268,7 @@ Detailed instructions for the agent...
 ```bash
 docker build -t agentic-discord-bot .
 
+# OpenAI provider
 docker run -d \
   --name discordbot \
   -e DISCORD_BOT_TOKEN="" \
@@ -236,9 +276,19 @@ docker run -d \
   -v /path/to/instructions.md:/app/instructions.md \
   -v /path/to/access.json:/app/access.json \
   agentic-discord-bot
+
+# Claude provider (servers_config.json must set "provider": "claude")
+docker run -d \
+  --name discordbot \
+  -e DISCORD_BOT_TOKEN="" \
+  -e ANTHROPIC_API_KEY="" \
+  -v /path/to/instructions.md:/app/instructions.md \
+  -v /path/to/servers_config.json:/app/servers_config.json \
+  -v /path/to/access.json:/app/access.json \
+  agentic-discord-bot
 ```
 
-To use MCP servers, also mount your config:
+To use MCP servers with OpenAI, also mount the config:
 
 ```bash
 docker run -d \
