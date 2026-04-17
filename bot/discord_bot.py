@@ -4,7 +4,7 @@ import asyncio
 import logging
 
 import discord
-from agent_core import OpenAIAgent
+from agent_core import ClaudeAgentError
 
 from .auth import create_pairing_code
 from .auth import get_dm_policy
@@ -18,12 +18,12 @@ ConversationKey = int
 
 
 class DiscordMCPBot:
-    def __init__(self, bot_token: str | None, openai_agent: OpenAIAgent) -> None:
+    def __init__(self, bot_token: str | None, agent) -> None:
         if bot_token is None:
             raise ValueError("DISCORD_BOT_TOKEN is not set")
 
         self._token = bot_token
-        self.agent = openai_agent
+        self.agent = agent
 
         intents = discord.Intents.default()
         intents.message_content = True
@@ -120,6 +120,10 @@ class DiscordMCPBot:
         async with message.channel.typing():
             try:
                 response = await self.agent.run(key, content)
+            except ClaudeAgentError as e:
+                logging.error("Claude agent error (subtype=%s, session=%s): %s", e.subtype, e.session_id, e)
+                await message.channel.send(f"Agent error: {e}")
+                return
             except Exception as e:
                 logging.error(f"Error processing message: {e}", exc_info=True)
                 await message.channel.send("I'm sorry, I encountered an error processing your request.")

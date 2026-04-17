@@ -28,7 +28,7 @@ def agent():
 
 @pytest.fixture
 def bot(agent):
-    b = DiscordMCPBot(bot_token="fake-token", openai_agent=agent)
+    b = DiscordMCPBot(bot_token="fake-token", agent=agent)
     b._client = MagicMock()
     b._client.user = MagicMock()
     b._client.user.id = 999
@@ -259,6 +259,44 @@ class TestGuildHandling:
             await bot.on_message(msg)
 
         msg.channel.send.assert_called_once()
+
+
+class TestErrorHandling:
+    @pytest.mark.anyio
+    async def test_claude_agent_error_sends_error_message_to_channel(self, bot):
+        from agent_core import ClaudeAgentError
+
+        bot.agent.run = AsyncMock(
+            side_effect=ClaudeAgentError(
+                "Credit balance is too low",
+                subtype="error_max_budget_usd",
+                session_id="sess-1",
+            )
+        )
+        msg = _make_dm_message(user_id=1, channel_id=10, text="hi")
+
+        with (
+            patch("bot.discord_bot.get_dm_policy", return_value="allowlist"),
+            patch("bot.discord_bot.is_allowed", return_value=True),
+        ):
+            await bot.on_message(msg)
+
+        msg.channel.send.assert_called_once()
+        assert "Credit balance is too low" in msg.channel.send.call_args[0][0]
+
+    @pytest.mark.anyio
+    async def test_generic_exception_sends_generic_error_message(self, bot):
+        bot.agent.run = AsyncMock(side_effect=RuntimeError("unexpected"))
+        msg = _make_dm_message(user_id=1, channel_id=10, text="hi")
+
+        with (
+            patch("bot.discord_bot.get_dm_policy", return_value="allowlist"),
+            patch("bot.discord_bot.is_allowed", return_value=True),
+        ):
+            await bot.on_message(msg)
+
+        msg.channel.send.assert_called_once()
+        assert "error" in msg.channel.send.call_args[0][0].lower()
 
 
 class TestLongMessageSplitting:

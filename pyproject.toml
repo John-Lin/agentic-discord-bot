@@ -5,7 +5,7 @@ description = "Agentic Discord Bot powered by OpenAI Agents SDK with MCP support
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "agent-core @ git+https://github.com/John-Lin/agent-core.git@main",
+    "agent-core",
     "discord.py>=2.4.0",
     "openai-agents>=0.13.0",
     "python-dotenv>=1.1.0",
@@ -69,3 +69,6 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["bot"]
+
+[tool.uv.sources]
+agent-core = { git = "https://github.com/John-Lin/agent-core.git", rev = "main" }
