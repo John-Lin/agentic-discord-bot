@@ -3,13 +3,27 @@ import logging
 import os
 from typing import Any
 
-from agent_core.env import env_flag
 from dotenv import find_dotenv
 from dotenv import load_dotenv
 
 __all__ = ["Configuration", "env_flag"]
 
 logger = logging.getLogger(__name__)
+
+_FALSY = {"", "0", "false", "no", "off"}
+
+
+def env_flag(name: str) -> bool:
+    """Return True when env var ``name`` is set to a non-falsy value.
+
+    Matches the semantics previously provided by ``agent_core.env.env_flag``
+    so local callers (e.g. ``AGENT_VERBOSE_LOG``) keep working after the
+    upstream module was removed.
+    """
+    raw = os.getenv(name)
+    if raw is None:
+        return False
+    return raw.strip().lower() not in _FALSY
 
 
 class Configuration:
@@ -24,7 +38,7 @@ class Configuration:
     def load_env() -> None:
         load_dotenv(find_dotenv())
 
-    _DEFAULT_CONFIG: dict[str, Any] = {"mcpServers": {}}
+    _DEFAULT_CONFIG: dict[str, Any] = {"mcp": {}}
 
     @staticmethod
     def load_config(file_path: str) -> dict[str, Any]:

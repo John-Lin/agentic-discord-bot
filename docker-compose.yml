@@ -1,0 +1,16 @@
+services:
+  bot:
+    build: .
+    image: fli-discord-bot
+    container_name: fli-discord-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      SESSION_DB_PATH: /app/data/sessions.db
+    volumes:
+      - ./instructions.md:/app/instructions.md
+      - ./agent_config.json:/app/agent_config.json
+      - ./access.json:/app/access.json
+      - ./data:/app/data
+      - ./claude-home:/root/.claude
+      - ./skills:/app/.claude/skills

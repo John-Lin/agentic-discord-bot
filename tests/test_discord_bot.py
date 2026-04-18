@@ -264,12 +264,13 @@ class TestGuildHandling:
 class TestErrorHandling:
     @pytest.mark.anyio
     async def test_claude_agent_error_sends_error_message_to_channel(self, bot):
-        from agent_core import ClaudeAgentError
+        from agent_core import AgentError
 
         bot.agent.run = AsyncMock(
-            side_effect=ClaudeAgentError(
+            side_effect=AgentError(
                 "Credit balance is too low",
                 subtype="error_max_budget_usd",
+                provider="anthropic",
                 session_id="sess-1",
             )
         )
