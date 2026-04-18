@@ -9,7 +9,7 @@ docker run -d \
   -v $(pwd)/agent_config.json:/app/agent_config.json \
   -v $(pwd)/access.json:/app/access.json \
   -v $(pwd)/data:/app/data \
-  -v $(pwd)/claude-home:/root/.claude \
+  -v $(pwd)/claude-home:/app/claude-home \
   -v $(pwd)/skills:/app/.claude/skills \
   --name fli-discord-bot \
   fli-discord-bot

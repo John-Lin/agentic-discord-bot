@@ -1,0 +1,34 @@
+# Secrets — must never land in an image layer.
+.env
+.envrc
+access.json
+access.json.lock
+
+# Runtime state written by the bot or the CLI subprocess. Mounted at
+# run time; baking these into the image would leak OAuth tokens,
+# session history, and chat data into every pushed tag.
+claude-home/
+data/
+logs/
+
+# Host-side config that is mounted at run time, not needed in the image.
+agent_config.json
+instructions.md
+
+# Dev tooling and local-only artefacts.
+.git/
+.github/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.ty_cache/
+.claude/
+.pre-commit-config.yaml
+dist/
+build/
+*.egg-info/
+
+# Tests are not needed at runtime.
+tests/
