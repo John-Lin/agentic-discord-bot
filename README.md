@@ -5,7 +5,7 @@ A Discord bot powered by [agent-core](https://github.com/John-Lin/agent-core) th
 - **OpenAI** (default) — via [OpenAI Agents SDK](https://github.com/openai/openai-agents-python); works with OpenAI and Azure OpenAI v1.
 - **Claude** — via [claude-agent-sdk](https://pypi.org/project/claude-agent-sdk/).
 
-Switch providers by setting `"provider"` in `servers_config.json`.
+Switch providers by setting `"provider"` in `agent_config.json`.
 
 See also: [agentic-slackbot](https://github.com/John-Lin/agentic-slackbot) and [agentic-telegram-bot](https://github.com/John-Lin/agentic-telegram-bot) — similar bots for Slack and Telegram.
 
@@ -15,8 +15,8 @@ See also: [agentic-slackbot](https://github.com/John-Lin/agentic-slackbot) and [
 - DM support with allowlist access control
 - Per-(channel, user) conversation history — each user maintains an independent context per channel/thread
 - Configurable guild access with per-channel and per-user filters
-- Connects to any MCP server via `servers_config.json`
-- Optional local shell: `ShellTool` (OpenAI) or `Bash`/`Read`/`Glob`/`Grep` (Claude), controlled by `SHELL_ENABLED`
+- Connects to any MCP server via `agent_config.json`
+- Optional local shell: `ShellTool` (OpenAI, via `provider.shell`) or `Bash`/`Write`/`Edit`/… (Claude, via `provider.allowedTools`). Read-only built-ins (`Read`, `Glob`, `Grep`) are always on for Claude.
 - Supports OpenAI, Azure OpenAI v1, and Anthropic Claude
 
 ## Install Dependencies
@@ -50,9 +50,11 @@ OPENAI_API_KEY=""
 # Claude provider
 # ANTHROPIC_API_KEY=""
 
-# Local shell (disabled by default)
-# SHELL_ENABLED=1
-# SHELL_SKILLS_DIR="./skills"  # OpenAI only; mount skills alongside the shell
+# Optional: override SQLite path for session storage (in-memory by default)
+# SESSION_DB_PATH="./sessions.db"
+
+# Optional: override the path to the instructions file (default ./instructions.md)
+# AGENT_INSTRUCTIONS_PATH="./instructions.md"
 
 # Optional verbose OpenAI Agents SDK logging (OpenAI only)
 # AGENT_VERBOSE_LOG=1
@@ -80,39 +82,48 @@ An example is provided in `instructions.md.example`. The bot will fail to start 
 
 ## Provider & MCP Server Configuration (Optional)
 
-Create a `servers_config.json` to choose a provider and connect MCP servers. If the file is absent, the bot starts with the default OpenAI provider and no tools.
+Create an `agent_config.json` to choose a provider and connect MCP servers. If the file is absent, the bot starts with the default OpenAI provider and no tools.
+
+`provider` is a tagged union keyed by `type` (`"openai"` or `"anthropic"`). `mcp` uses an opencode-style schema keyed by server name, with `type: "local" | "remote"`.
 
 ### OpenAI provider (default)
 
 ```json
 {
-  "provider": "openai",
-  "model": "gpt-5.4",
-  "mcpServers": {
+  "provider": {
+    "type": "openai",
+    "model": "gpt-5.4",
+    "apiType": "responses",
+    "historyTurns": 10
+  },
+  "mcp": {
     "my-server": {
-      "command": "uvx",
-      "args": ["my-mcp-server"]
+      "type": "local",
+      "command": ["uvx", "my-mcp-server"]
     }
   }
 }
 ```
 
-`provider` defaults to `"openai"`; `model` defaults to `gpt-5.4`. Each MCP server also accepts `timeout` (seconds, default `30.0`) and `enabled` (default `true`).
+All `provider` fields are optional (`model` defaults to `gpt-5.4`, `apiType` to `"responses"`, `historyTurns` to `10`). Each MCP entry also accepts `timeout` (seconds, default `30.0`) and `enabled` (default `true`).
 
 ### Claude provider
 
 ```json
 {
-  "provider": "claude",
-  "model": "claude-sonnet-4-6",
-  "maxTurns": 10,
-  "allowedTools": ["WebFetch"],
-  "mcpServers": {
+  "provider": {
+    "type": "anthropic",
+    "model": "claude-sonnet-4-6",
+    "allowedTools": ["WebFetch"]
+  },
+  "mcp": {
     "my-stdio": {
-      "command": "python",
-      "args": ["-m", "srv"]
+      "type": "local",
+      "command": ["python", "-m", "srv"],
+      "environment": {"FOO": "bar"}
     },
     "my-http": {
+      "type": "remote",
       "url": "https://example.com/mcp",
       "headers": {"Authorization": "Bearer x"}
     }
@@ -120,31 +131,30 @@ Create a `servers_config.json` to choose a provider and connect MCP servers. If 
 }
 ```
 
-Requires `ANTHROPIC_API_KEY`. `allowedTools` extends the built-in set (`Bash`/`Read`/`Glob`/`Grep` when `SHELL_ENABLED=1`) with additional Claude tools such as `WebFetch`, `Write`, `Edit`. Billing/rate-limit/`error_max_turns` errors are surfaced to the channel as a readable message.
+Requires `ANTHROPIC_API_KEY`. Read-only built-ins (`Read`, `Glob`, `Grep`) are always on; `allowedTools` extends that set with any tool that can mutate files or run commands (`Bash`, `Write`, `Edit`, `WebFetch`, …). Tool names are case-sensitive and validated by the SDK — an unrecognized name is silently dropped. Billing/rate-limit/`error_max_turns` errors are surfaced to the channel as a readable message via `AgentError`.
 
-### HTTP MCP servers (OpenAI, Streamable HTTP)
+### Remote (HTTP) MCP servers
 
 ```json
 {
-  "mcpServers": {
+  "mcp": {
     "my-server": {
+      "type": "remote",
       "url": "https://mcp.example.com/mcp",
-      "headers": {
-        "Accept": "application/json, text/event-stream"
-      }
+      "headers": {"Accept": "application/json, text/event-stream"}
     }
   }
 }
 ```
 
-### Local MCP servers (OpenAI, via `uv --directory`)
+### Local MCP servers (via `uv --directory`)
 
 ```json
 {
-  "mcpServers": {
+  "mcp": {
     "my-server": {
-      "command": "uv",
-      "args": ["--directory", "/path/to/my-server", "run", "my-entrypoint"]
+      "type": "local",
+      "command": ["uv", "--directory", "/path/to/my-server", "run", "my-entrypoint"]
     }
   }
 }
@@ -226,31 +236,44 @@ To find IDs in Discord, enable **Developer Mode**, then right-click the server i
 
 Each user has an independent conversation history per channel or thread. Replying to the bot's message continues the same conversation. Starting a thread creates a fresh context for that thread.
 
-History is capped at the last N turns per conversation (default 10, configurable via `maxTurns` in `servers_config.json`).
+OpenAI history length is controlled by `provider.historyTurns` in `agent_config.json` (default `10`). Claude history is managed on disk by `claude-agent-sdk` and resumed across restarts via a `chat_id -> session_id` mapping in SQLite (`SESSION_DB_PATH`).
 
 ## Local Shell (Optional)
 
-Local shell tools are **disabled by default**. Enable with:
+Local shell tools are **disabled by default** and are configured in `agent_config.json` per provider.
 
+### OpenAI — `provider.shell`
+
+```json
+{
+  "provider": {
+    "type": "openai",
+    "shell": {
+      "enabled": true,
+      "skillsDir": "./skills"
+    }
+  }
+}
 ```
-SHELL_ENABLED=1
+
+`provider.shell.enabled` must be a bool (strings are rejected). `provider.shell.skillsDir` is optional and mounts a skills directory alongside the `ShellTool`.
+
+### Claude — `provider.allowedTools`
+
+Read-only built-ins (`Read`, `Glob`, `Grep`) are always on. Add mutating or exec-capable tools explicitly:
+
+```json
+{
+  "provider": {
+    "type": "anthropic",
+    "allowedTools": ["Bash", "Write", "Edit", "WebFetch"]
+  }
+}
 ```
-
-Behaviour depends on the provider:
-
-- **OpenAI**: attaches a `ShellTool` (bare local shell). Optionally mount a skills directory with `SHELL_SKILLS_DIR`.
-- **Claude**: allows the SDK's built-in `Bash`, `Read`, `Glob`, `Grep` tools. Extra Claude tools (e.g. `WebFetch`, `Write`, `Edit`) are declared via `"allowedTools"` in `servers_config.json`. `SHELL_SKILLS_DIR` is ignored.
 
 ### Shell Skills (OpenAI only)
 
-You can mount a skills directory alongside the shell. Each immediate subdirectory containing a `SKILL.md` file is registered as a skill and exposed to the agent as a hint (skills are advisory metadata — they do **not** sandbox command execution).
-
-```
-SHELL_ENABLED=1
-SHELL_SKILLS_DIR="./skills"
-```
-
-`SHELL_SKILLS_DIR` is ignored unless `SHELL_ENABLED` is set and the OpenAI provider is in use. If the directory is missing or contains no valid skills, the bot falls back to a bare shell and logs a warning.
+Each immediate subdirectory of `skillsDir` containing a `SKILL.md` file is registered as a skill and exposed to the agent as a hint (skills are advisory metadata — they do **not** sandbox command execution). If the directory is missing or contains no valid skills, the bot falls back to a bare shell and logs a warning.
 
 The `SKILL.md` file should have YAML frontmatter with `name` and `description` fields:
 
@@ -277,13 +300,13 @@ docker run -d \
   -v /path/to/access.json:/app/access.json \
   agentic-discord-bot
 
-# Claude provider (servers_config.json must set "provider": "claude")
+# Claude provider (agent_config.json must set "provider": {"type": "anthropic"})
 docker run -d \
   --name discordbot \
   -e DISCORD_BOT_TOKEN="" \
   -e ANTHROPIC_API_KEY="" \
   -v /path/to/instructions.md:/app/instructions.md \
-  -v /path/to/servers_config.json:/app/servers_config.json \
+  -v /path/to/agent_config.json:/app/agent_config.json \
   -v /path/to/access.json:/app/access.json \
   agentic-discord-bot
 ```
@@ -296,7 +319,7 @@ docker run -d \
   -e DISCORD_BOT_TOKEN="" \
   -e OPENAI_API_KEY="" \
   -v /path/to/instructions.md:/app/instructions.md \
-  -v /path/to/servers_config.json:/app/servers_config.json \
+  -v /path/to/agent_config.json:/app/agent_config.json \
   -v /path/to/access.json:/app/access.json \
   agentic-discord-bot
 ```

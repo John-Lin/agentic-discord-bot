@@ -34,8 +34,8 @@ async def start_bot() -> None:
     _configure_logging()
     config = Configuration()
 
-    server_config = config.load_config("servers_config.json")
-    agent = build_agent("Discord Bot Agent", server_config)
+    agent_config = config.load_config("agent_config.json")
+    agent = build_agent("Discord Bot Agent", agent_config)
 
     discord_bot = DiscordMCPBot(config.discord_bot_token, agent)
 

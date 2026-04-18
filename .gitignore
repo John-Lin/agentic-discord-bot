@@ -1,7 +1,9 @@
 .env
 .envrc
 .claude/
-servers_config.json
+agent_config.json
+data/
+claude-home/
 __pycache__/
 *.py[cod]
 .venv/

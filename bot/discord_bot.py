@@ -4,7 +4,7 @@ import asyncio
 import logging
 
 import discord
-from agent_core import ClaudeAgentError
+from agent_core import AgentError
 
 from .auth import create_pairing_code
 from .auth import get_dm_policy
@@ -120,8 +120,14 @@ class DiscordMCPBot:
         async with message.channel.typing():
             try:
                 response = await self.agent.run(key, content)
-            except ClaudeAgentError as e:
-                logging.error("Claude agent error (subtype=%s, session=%s): %s", e.subtype, e.session_id, e)
+            except AgentError as e:
+                logging.error(
+                    "Agent error (provider=%s, subtype=%s, session=%s): %s",
+                    e.provider,
+                    e.subtype,
+                    e.session_id,
+                    e,
+                )
                 await message.channel.send(f"Agent error: {e}")
                 return
             except Exception as e:

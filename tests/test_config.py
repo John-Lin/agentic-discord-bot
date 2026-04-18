@@ -39,11 +39,14 @@ class TestConfiguration:
 
     def test_load_config_returns_default_when_file_missing(self, tmp_path):
         result = Configuration.load_config(str(tmp_path / "nonexistent.json"))
-        assert result == {"mcpServers": {}}
+        assert result == {"mcp": {}}
 
     def test_load_config_parses_json_file(self, tmp_path):
-        cfg = {"instructions": "Be helpful.", "mcpServers": {"srv": {"command": "uvx", "args": ["tool"]}}}
-        config_file = tmp_path / "servers_config.json"
+        cfg = {
+            "provider": {"type": "openai"},
+            "mcp": {"srv": {"type": "local", "command": ["uvx", "tool"]}},
+        }
+        config_file = tmp_path / "agent_config.json"
         config_file.write_text(json.dumps(cfg))
         result = Configuration.load_config(str(config_file))
         assert result == cfg
